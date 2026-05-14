@@ -7,6 +7,7 @@ use Ometra\HeimdalSdk\Contracts\Mappers\DomainResponseMapper;
 use Ometra\HeimdalSdk\Data\ChangeMsisdnData;
 use Ometra\HeimdalSdk\Data\ChangePrimaryOfferingData;
 use Ometra\HeimdalSdk\Data\ChangeSimData;
+use Ometra\HeimdalSdk\Data\SubscriberActivationData;
 use Ometra\HeimdalSdk\Dtos\OperationResultDto;
 use Ometra\HeimdalSdk\Dtos\SubscriberMsisdnChangeResultDto;
 use Ometra\HeimdalSdk\Dtos\SubscriberProfileDto;
@@ -24,14 +25,19 @@ class SubscribersContract
         return $this->mapper->profile($this->heimdal->subscribers()->profile($msisdn), $msisdn);
     }
 
-    public function activate(string $msisdn, string $offeringId): OperationResultDto
+    public function lookupForOperator(string $msisdn): OperationResultDto
     {
-        return $this->mapper->operation($this->heimdal->subscribers()->activate($msisdn, $offeringId));
+        return $this->mapper->operation($this->heimdal->subscribers()->lookupForOperator($msisdn));
     }
 
-    public function preactivate(string $msisdn, string $offeringId): OperationResultDto
+    public function activate(string $msisdn, string|SubscriberActivationData $offeringId, ?string $address = null): OperationResultDto
     {
-        return $this->mapper->operation($this->heimdal->subscribers()->preactivate($msisdn, $offeringId));
+        return $this->mapper->operation($this->heimdal->subscribers()->activate($msisdn, $offeringId, $address));
+    }
+
+    public function preactivate(string $msisdn, string|SubscriberActivationData $offeringId, ?string $address = null): OperationResultDto
+    {
+        return $this->mapper->operation($this->heimdal->subscribers()->preactivate($msisdn, $offeringId, $address));
     }
 
     public function suspend(string $msisdn): OperationResultDto
@@ -102,5 +108,15 @@ class SubscribersContract
     public function offerings(string $msisdn): OperationResultDto
     {
         return $this->mapper->operation($this->heimdal->subscribers()->offerings($msisdn));
+    }
+
+    public function preregistrations(string $msisdn): OperationResultDto
+    {
+        return $this->mapper->operation($this->heimdal->subscribers()->preregistrations($msisdn));
+    }
+
+    public function allowRecharge(string $msisdn, string $offeringId): OperationResultDto
+    {
+        return $this->mapper->operation($this->heimdal->subscribers()->allowRecharge($msisdn, $offeringId));
     }
 }

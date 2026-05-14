@@ -21,6 +21,8 @@ class HeimdalContracts
 
     private ?ProductsContract $products = null;
 
+    private ?MsisdnsContract $msisdns = null;
+
     private ?BatchContract $batch = null;
 
     private ?MonitoringContract $monitoring = null;
@@ -58,6 +60,11 @@ class HeimdalContracts
     public function products(): ProductsContract
     {
         return $this->products ??= new ProductsContract($this->heimdal, $this->mapper);
+    }
+
+    public function msisdns(): MsisdnsContract
+    {
+        return $this->msisdns ??= new MsisdnsContract($this->heimdal, $this->mapper);
     }
 
     public function batch(): BatchContract

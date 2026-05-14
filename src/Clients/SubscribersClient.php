@@ -5,6 +5,7 @@ namespace Ometra\HeimdalSdk\Clients;
 use Ometra\HeimdalSdk\Data\ChangeMsisdnData;
 use Ometra\HeimdalSdk\Data\ChangePrimaryOfferingData;
 use Ometra\HeimdalSdk\Data\ChangeSimData;
+use Ometra\HeimdalSdk\Data\SubscriberActivationData;
 use Ometra\HeimdalSdk\Dtos\HeimdalResponseDto;
 
 class SubscribersClient extends AbstractClient
@@ -19,14 +20,20 @@ class SubscribersClient extends AbstractClient
         return $this->http->get("subscribers/{$this->segment($msisdn)}/profile");
     }
 
-    public function activate(string $msisdn, string $offeringId): HeimdalResponseDto
+    public function activate(string $msisdn, string|SubscriberActivationData $offeringId, ?string $address = null): HeimdalResponseDto
     {
-        return $this->http->post("subscribers/{$this->segment($msisdn)}/activate", ['offeringId' => $offeringId]);
+        return $this->http->post(
+            "subscribers/{$this->segment($msisdn)}/activate",
+            $this->activationPayload($offeringId, $address),
+        );
     }
 
-    public function preactivate(string $msisdn, string $offeringId): HeimdalResponseDto
+    public function preactivate(string $msisdn, string|SubscriberActivationData $offeringId, ?string $address = null): HeimdalResponseDto
     {
-        return $this->http->post("subscribers/{$this->segment($msisdn)}/preactivate", ['offeringId' => $offeringId]);
+        return $this->http->post(
+            "subscribers/{$this->segment($msisdn)}/preactivate",
+            $this->activationPayload($offeringId, $address),
+        );
     }
 
     public function suspend(string $msisdn): HeimdalResponseDto
@@ -118,5 +125,17 @@ class SubscribersClient extends AbstractClient
     private function statusPost(string $msisdn, string $action): HeimdalResponseDto
     {
         return $this->http->post("subscribers/{$this->segment($msisdn)}/{$action}");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function activationPayload(string|SubscriberActivationData $offeringId, ?string $address): array
+    {
+        if ($offeringId instanceof SubscriberActivationData) {
+            return $offeringId->toArray();
+        }
+
+        return (new SubscriberActivationData($offeringId, $address))->toArray();
     }
 }

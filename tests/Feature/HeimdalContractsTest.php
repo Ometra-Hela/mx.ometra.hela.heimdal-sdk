@@ -6,8 +6,12 @@ use Illuminate\Support\Facades\Http;
 use Ometra\HeimdalSdk\Data\ChangeMsisdnData;
 use Ometra\HeimdalSdk\Data\ChangeSimData;
 use Ometra\HeimdalSdk\Data\DateRangeQuery;
+use Ometra\HeimdalSdk\Data\PortInData;
+use Ometra\HeimdalSdk\Data\SubscriberActivationData;
+use Ometra\HeimdalSdk\Dtos\BatchSubmissionDto;
 use Ometra\HeimdalSdk\Dtos\HistoryCollectionDto;
 use Ometra\HeimdalSdk\Dtos\ImeiCompatibilityDto;
+use Ometra\HeimdalSdk\Dtos\OperationResultDto;
 use Ometra\HeimdalSdk\Dtos\SubscriberProfileDto;
 use Ometra\HeimdalSdk\Exceptions\HeimdalSubscriberNotFoundException;
 use Ometra\HeimdalSdk\Facades\HeimdalSdk;
@@ -136,6 +140,87 @@ class HeimdalContractsTest extends TestCase
 
         $this->assertSame('525512345678', $result->oldMsisdn);
         $this->assertSame('525500000000', $result->newMsisdn);
+    }
+
+    public function test_contract_activation_accepts_typed_payload_with_address(): void
+    {
+        Http::fake([
+            'https://heimdal.example.test/api/v2/subscribers/525512345678/activate' => Http::response([
+                'success' => true,
+                'correlation_id' => 'corr-activate',
+                'operation' => 'v2.subscribers.activate',
+                'data' => ['accepted' => true],
+                'meta' => ['provider' => 'altan', 'provider_status' => 200, 'duration_ms' => 24],
+            ]),
+        ]);
+
+        $result = HeimdalSdk::contracts()
+            ->subscribers()
+            ->activate('525512345678', new SubscriberActivationData('OFFER-1', '19.4395546,-99.187162'));
+
+        $this->assertInstanceOf(OperationResultDto::class, $result);
+        $this->assertSame('v2.subscribers.activate', $result->operation);
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://heimdal.example.test/api/v2/subscribers/525512345678/activate'
+                && $request['offeringId'] === 'OFFER-1'
+                && $request['address'] === '19.4395546,-99.187162';
+        });
+    }
+
+    public function test_contract_msisdn_port_in_uses_v2_endpoint(): void
+    {
+        Http::fake([
+            'https://heimdal.example.test/api/v2/msisdns/port-in-c' => Http::response([
+                'success' => true,
+                'correlation_id' => 'corr-port-in',
+                'operation' => 'v2.msisdns.port_in',
+                'data' => ['accepted' => true],
+                'meta' => ['provider' => 'altan', 'provider_status' => 200, 'duration_ms' => 31],
+            ]),
+        ]);
+
+        $result = HeimdalSdk::contracts()
+            ->msisdns()
+            ->portIn(new PortInData('525500000001', '525512345678', 'true'));
+
+        $this->assertInstanceOf(OperationResultDto::class, $result);
+        $this->assertSame('v2.msisdns.port_in', $result->operation);
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://heimdal.example.test/api/v2/msisdns/port-in-c'
+                && $request['msisdnTransitory'] === '525500000001'
+                && $request['msisdnPorted'] === '525512345678'
+                && $request['autoScriptReg'] === 'true';
+        });
+    }
+
+    public function test_contract_batch_exposes_adapter_coverage_methods(): void
+    {
+        Http::fake([
+            'https://heimdal.example.test/api/v2/batch/subscribers/changesSIM' => Http::response([
+                'success' => true,
+                'correlation_id' => 'corr-batch',
+                'operation' => 'v2.batch.subscribers.changes_sim',
+                'data' => ['batch_id' => 'batch-1'],
+                'meta' => ['provider' => 'altan', 'provider_status' => 202, 'duration_ms' => 40],
+            ]),
+        ]);
+
+        $result = HeimdalSdk::contracts()
+            ->batch()
+            ->subscriberChangesSim([['msisdn' => '525512345678', 'newIccid' => '8952']]);
+
+        $this->assertInstanceOf(BatchSubmissionDto::class, $result);
+        $this->assertSame('batch-1', $result->get('batch_id'));
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://heimdal.example.test/api/v2/batch/subscribers/changesSIM'
+                && $request['records'][0]['newIccid'] === '8952';
+        });
     }
 
     public function test_altan_subscriber_not_found_is_typed_exception(): void
